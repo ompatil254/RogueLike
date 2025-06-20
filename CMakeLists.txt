@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(roguelike src/main.cpp
         src/timer.cpp
         src/timer.h
-        src/Animation.h)
+        src/Animation.h
+        src/GameObject.h)
 
 target_link_libraries(roguelike PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL2_mixer::SDL2_mixer glm::glm)
