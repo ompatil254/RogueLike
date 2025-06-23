@@ -44,8 +44,9 @@ struct GameObject {
     int currentAnimation;
     float maxSpeedX;
     bool dynamic;
+    SDL_FRect collider;
 
-    GameObject() :data{.level = LevelData()} {
+    GameObject() :data{.level = LevelData()}, collider {0} {
         type = ObjectType::level;
         maxSpeedX = 0;
         direction = 1;

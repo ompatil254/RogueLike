@@ -86,9 +86,10 @@ struct GameState {
 bool SDLInit(SDLState& state);
 void cleanup(const SDLState& state);
 void drawObject(const SDLState& state, GameState& gs, const GameObject& obj, float deltaTime);
-void update(const SDLState& state, GameState& gs, GameObject& obj, const Resources& res, float deltaTime);
+void update(const SDLState& state, GameState& gs, GameObject& obj, Resources& res, float deltaTime);
 void createTiles(const SDLState& state, GameState& gs, const Resources& res);
-
+void checkCollision(const SDLState& state, GameState& gs, Resources& res, GameObject& a, GameObject& b, float deltaTime);
+void collisionResponse(const SDLState &state, GameState &gs, Resources &res, const SDL_FRect &rectA, const SDL_FRect &rectB, const SDL_FRect &rectC, GameObject &objA, GameObject &objB, float deltaTime);
 
 //------------------- FUNC DEF ENDS -------------------------
 
@@ -277,7 +278,7 @@ void drawObject(const SDLState& state, GameState& gs, const GameObject& obj, flo
 
 
 
-void update(const SDLState& state, GameState& gs, GameObject& obj, const Resources& res, float deltaTime) {
+void update(const SDLState& state, GameState& gs, GameObject& obj, Resources& res, float deltaTime) {
     if (obj.dynamic) {
         obj.velocity += glm::vec2(0, 300) * deltaTime;
     }
@@ -335,8 +336,75 @@ void update(const SDLState& state, GameState& gs, GameObject& obj, const Resourc
         }
     }
     obj.position += obj.velocity * deltaTime;
+
+    for (auto &layer : gs.layers) {
+        for (auto &objB : layer) {
+            if (&objB != &obj) {
+                checkCollision(state, gs, res, obj, objB, deltaTime);
+            }
+        }
+    }
 }
 
+
+void collisionResponse(const SDLState &state, GameState &gs, Resources &res, const SDL_FRect &rectA, const SDL_FRect &rectB, const SDL_FRect &rectC, GameObject &objA, GameObject &objB, float deltaTime) {
+    if (objA.type == ObjectType::player) {
+        switch (objB.type) {
+            case ObjectType::enemy: {
+                break;
+            }
+            case ObjectType::level: {
+                if (rectC.w < rectC.h) { // Horizontal Collision
+                    if (objA.velocity.x > 0) { // Right side
+                        objA.position.x -= rectC.w;
+                    }
+                    else if (objA.velocity.x < 0) {
+                        objA.position.x += rectC.w;
+                    }
+                    objA.velocity.x = 0;
+                }
+                else {
+                    if (objA.velocity.y > 0) {
+                        objA.position.y -= rectC.h;
+                    }
+                    else if (objA.velocity.y < 0) {
+                        objA.position.y += rectC.h;
+                    }
+                    objA.velocity.y = 0;
+                }
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+
+    }
+}
+
+
+void checkCollision(const SDLState& state, GameState& gs, Resources& res, GameObject& a, GameObject& b, float deltaTime) {
+    SDL_FRect rectA{
+        .x = a.position.x + a.collider.x,
+        .y = a.position.y + a.collider.y,
+        .w = a.collider.w,
+        .h = a.collider.h
+    };
+
+    SDL_FRect rectB{
+        .x = b.position.x + b.collider.x,
+        .y = b.position.y + b.collider.y,
+        .w = b.collider.w,
+        .h = b.collider.h
+    };
+
+    SDL_FRect rectC{0};
+
+    if (SDL_GetRectIntersectionFloat(&rectA, &rectB, &rectC)) {
+        collisionResponse(state, gs, res, rectA, rectB, rectC, a, b, deltaTime);
+    }
+
+}
 
 
 void createTiles(const SDLState& state, GameState& gs, const Resources& res) {
@@ -350,11 +418,11 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res) {
     */
 
     short map[MAP_ROWS][MAP_COLS] = {
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {2, 0, 0, 2, 2, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {2, 0, 2, 2, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     };
 
     const auto createObject = [&state](int r, int c, SDL_Texture *tex, ObjectType type) {
@@ -365,6 +433,10 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res) {
             c * TILE_SIZE,
             state.logH - (MAP_ROWS - r) * TILE_SIZE
         );
+        obj.collider = {
+            .x = 0, .y = 0,
+            .w = TILE_SIZE, .h = TILE_SIZE
+        };
         return obj;
     };
 
@@ -397,6 +469,10 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res) {
                     player.acceleration = glm::vec2(300, 0);
                     player.maxSpeedX = 100;
                     player.dynamic = true;
+                    player.collider = {
+                        .x = 11, .y = 6,
+                        .w = 10, .h = 26
+                    };
                     gs.layers[LAYER_IDX_CHARACTERS].push_back(player);
                     break;
                 }
